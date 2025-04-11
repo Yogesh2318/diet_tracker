@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:my_project/model/usermodel.dart';
+import 'package:my_project/services/firebase_service.dart';
 
 class ProfilePage extends StatefulWidget {
   final UserModel user;
   final Function(UserModel) onUpdate;
 
-  const ProfilePage({
-    Key? key,
-    required this.user,
-    required this.onUpdate,
-  }) : super(key: key);
+  const ProfilePage({Key? key, required this.user, required this.onUpdate})
+    : super(key: key);
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -17,6 +15,8 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool isEditing = false;
+  bool _isSaving = false;
+  final _firebaseService = FirebaseService();
 
   // TextEditingControllers for user inputs
   final TextEditingController heightController = TextEditingController();
@@ -28,7 +28,10 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with current values from the passed user model
+    _initializeControllers();
+  }
+
+  void _initializeControllers() {
     heightController.text = widget.user.hieght.toString();
     weightController.text = widget.user.wieght.toString();
     caloriesController.text = widget.user.claories.toString();
@@ -36,74 +39,142 @@ class _ProfilePageState extends State<ProfilePage> {
     nutrientsController.text = widget.user.nutrients.toString();
   }
 
-  void toggleEditMode() {
-    setState(() {
-      isEditing = !isEditing;
-      if (!isEditing) {
-        // Save data when exiting edit mode
-        saveData();
-      }
-    });
+  @override
+  void dispose() {
+    heightController.dispose();
+    weightController.dispose();
+    caloriesController.dispose();
+    proteinController.dispose();
+    nutrientsController.dispose();
+    super.dispose();
   }
 
-  void saveData() {
-    // Update the local user model
+  void toggleEditMode() {
+    if (isEditing) {
+      // If we're currently editing, save the data
+      saveData();
+    } else {
+      // If we're not editing, enter edit mode
+      setState(() {
+        isEditing = true;
+      });
+    }
+  }
+
+  Future<void> saveData() async {
+    // Show loading indicator
     setState(() {
-      widget.user.hieght = int.tryParse(heightController.text) ?? widget.user.hieght;
-      widget.user.wieght = int.tryParse(weightController.text) ?? widget.user.wieght;
-      widget.user.claories = int.tryParse(caloriesController.text) ?? widget.user.claories;
-      widget.user.protient = int.tryParse(proteinController.text) ?? widget.user.protient;
-      widget.user.nutrients = int.tryParse(nutrientsController.text) ?? widget.user.nutrients;
+      _isSaving = true;
     });
 
-    // Notify the parent (Navbar) about the update
-    widget.onUpdate(widget.user);
+    try {
+      // Create updated user model
+      final updatedUser = widget.user.copyWith(
+        hieght: int.tryParse(heightController.text) ?? widget.user.hieght,
+        wieght: int.tryParse(weightController.text) ?? widget.user.wieght,
+        claories: int.tryParse(caloriesController.text) ?? widget.user.claories,
+        protient: int.tryParse(proteinController.text) ?? widget.user.protient,
+        nutrients:
+            int.tryParse(nutrientsController.text) ?? widget.user.nutrients,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Profile updated successfully!"),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      // Call the update callback
+      await widget.onUpdate(updatedUser);
+
+      if (!mounted) return;
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Exit edit mode
+      setState(() {
+        isEditing = false;
+      });
+    } catch (e) {
+      // Show error message
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update profile: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      await _firebaseService.signOut();
+      if (!mounted) return;
+
+      // Navigate to login screen
+      Navigator.pushNamedAndRemoveUntil(context, 'login', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to logout: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Rest of your ProfilePage implementation remains the same
     return Scaffold(
       appBar: AppBar(
-        title: Text("Profile"),
+        title: const Text('Profile'),
         centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(isEditing ? Icons.save : Icons.edit),
-            onPressed: toggleEditMode,
+            onPressed: _isSaving ? null : toggleEditMode,
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _handleLogout,
+            tooltip: 'Logout',
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Profile header with avatar and user info
             Container(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               color: Theme.of(context).primaryColor.withOpacity(0.1),
               child: Column(
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(0.2),
                     child: Icon(
                       Icons.person,
                       size: 60,
                       color: Theme.of(context).primaryColor,
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
                     widget.user.name,
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     widget.user.email,
@@ -112,68 +183,68 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
-
-            // Stats section
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
                     child: Text(
-                      "Personal Stats",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      'Personal Stats',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 8),
-
-                  // Display stats in cards or edit fields based on mode
+                  const SizedBox(height: 8),
                   buildStatItem(
-                      "Height",
-                      "${widget.user.hieght} cm",
-                      heightController,
-                      "cm",
-                      Icons.height
+                    'Height',
+                    '${widget.user.hieght} cm',
+                    heightController,
+                    'cm',
+                    Icons.height,
                   ),
                   buildStatItem(
-                      "Weight",
-                      "${widget.user.wieght} kg",
-                      weightController,
-                      "kg",
-                      Icons.fitness_center
+                    'Weight',
+                    '${widget.user.wieght} kg',
+                    weightController,
+                    'kg',
+                    Icons.fitness_center,
                   ),
-
-                  SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
                     child: Text(
-                      "Nutrition Goals",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      'Nutrition Goals',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 8),
-
+                  const SizedBox(height: 8),
                   buildStatItem(
-                      "Daily Calories",
-                      "${widget.user.claories} kcal",
-                      caloriesController,
-                      "kcal",
-                      Icons.local_fire_department
+                    'Daily Calories',
+                    '${widget.user.claories} kcal',
+                    caloriesController,
+                    'kcal',
+                    Icons.local_fire_department,
                   ),
                   buildStatItem(
-                      "Protein Target",
-                      "${widget.user.protient} g",
-                      proteinController,
-                      "g",
-                      Icons.egg_alt
+                    'Protein Target',
+                    '${widget.user.protient} g',
+                    proteinController,
+                    'g',
+                    Icons.egg_alt,
                   ),
                   buildStatItem(
-                      "Nutrients Goal",
-                      "${widget.user.nutrients}%",
-                      nutrientsController,
-                      "%",
-                      Icons.food_bank
+                    'Nutrients Goal',
+                    '${widget.user.nutrients}%',
+                    nutrientsController,
+                    '%',
+                    Icons.food_bank,
                   ),
                 ],
               ),
@@ -184,17 +255,22 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget buildStatItem(String label, String value, TextEditingController controller, String unit, IconData icon) {
-    // Implementation remains the same as in your improved profile page
+  Widget buildStatItem(
+    String label,
+    String value,
+    TextEditingController controller,
+    String unit,
+    IconData icon,
+  ) {
     return Card(
       elevation: 2,
-      margin: EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Theme.of(context).primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
@@ -205,35 +281,35 @@ class _ProfilePageState extends State<ProfilePage> {
                 size: 24,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   isEditing
                       ? TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: "Enter $label",
-                      suffixText: unit,
-                      contentPadding: EdgeInsets.symmetric(vertical: 4),
-                    ),
-                  )
+                        controller: controller,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          hintText: 'Enter $label',
+                          suffixText: unit,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
+                        ),
+                        enabled: !_isSaving,
+                      )
                       : Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                        value,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                 ],
               ),
             ),
