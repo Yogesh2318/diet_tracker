@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:my_project/model/usermodel.dart';
 import 'package:my_project/services/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/food_search.dart';
 
 // Step 1: Create a Meal class
 class Meal {
@@ -74,6 +75,7 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   bool isAddOpen = false;
+  bool isSearchOpen = false;
   final TextEditingController caloriesController = TextEditingController();
   final TextEditingController proteinController = TextEditingController();
   final TextEditingController nutrientsController = TextEditingController();
@@ -117,6 +119,14 @@ class _HomeState extends State<Home> {
         backgroundColor: Colors.green[700],
         actions: [
           IconButton(
+            icon: Icon(Icons.search),
+            onPressed: () {
+              setState(() {
+                isSearchOpen = !isSearchOpen;
+              });
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.refresh),
             onPressed: widget.onResetProgress,
           ),
@@ -132,189 +142,270 @@ class _HomeState extends State<Home> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Daily Progress",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-
-              // Show daily goals from profile
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Your Daily Goals",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        "Calories: ${dailyCalories.toStringAsFixed(0)} kcal",
-                        style: TextStyle(color: Colors.red),
-                      ),
-                      Text(
-                        "Protein: ${dailyProtein.toStringAsFixed(0)} g",
-                        style: TextStyle(color: Colors.blue),
-                      ),
-                      Text(
-                        "Nutrients: ${dailyNutrients.toStringAsFixed(0)}%",
-                        style: TextStyle(color: Colors.green),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        "Progress will reset at midnight",
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-
-              Text(
-                "Calories (${widget.consumedCalories.toStringAsFixed(0)}/${dailyCalories.toStringAsFixed(0)} kcal)",
-                style: TextStyle(fontSize: 16),
-              ),
-              LinearProgressIndicator(
-                value: widget.caloriesProgress,
-                minHeight: 10,
-                backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-              ),
-              SizedBox(height: 20),
-
-              Text(
-                "Protein (${widget.consumedProtein.toStringAsFixed(0)}/${dailyProtein.toStringAsFixed(0)} g)",
-                style: TextStyle(fontSize: 16),
-              ),
-              LinearProgressIndicator(
-                value: widget.proteinProgress,
-                minHeight: 10,
-                backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-              ),
-              SizedBox(height: 20),
-
-              Text(
-                "Nutrients (${widget.consumedNutrients.toStringAsFixed(0)}/${dailyNutrients.toStringAsFixed(0)}%)",
-                style: TextStyle(fontSize: 16),
-              ),
-              LinearProgressIndicator(
-                value: widget.nutrientsProgress,
-                minHeight: 10,
-                backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-              ),
-              SizedBox(height: 30),
-
-              Text(
-                'Mostly Consumed Meals',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-
-              // Step 3: Meal Tiles
-              Column(
-                children:
-                    meals.map((meal) {
-                      return Card(
-                        elevation: 2,
-                        margin: EdgeInsets.symmetric(vertical: 4),
-                        child: ListTile(
-                          title: Text(meal.name),
-                          subtitle: Text(
-                            "Calories: ${meal.calories}, Protein: ${meal.protein}g, Nutrients: ${meal.nutrients}",
-                          ),
-                          trailing: IconButton(
-                            icon: Icon(
-                              Icons.add_circle_outline,
-                              color: Colors.green,
+        child: Column(
+          children: [
+            if (isSearchOpen)
+              SizedBox(
+                height: 400, // Fixed height for search container
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Search Food",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            onPressed: () {
+                            IconButton(
+                              icon: Icon(Icons.close),
+                              onPressed: () {
+                                setState(() {
+                                  isSearchOpen = false;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        Expanded(
+                          child: FoodSearchWidget(
+                            onFoodSelected: (nutritionData) {
                               widget.onUpdateProgress(
-                                cal: meal.calories,
-                                prot: meal.protein,
-                                nut: meal.nutrients,
+                                cal: nutritionData['calories'].toDouble(),
+                                prot: nutritionData['protein'].toDouble(),
+                                nut: nutritionData['fiber'].toDouble(),
                               );
+                              setState(() {
+                                isSearchOpen = false;
+                              });
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    "Added ${meal.name} to today's intake",
+                                    'Food added to your daily intake',
                                   ),
-                                  duration: Duration(seconds: 1),
+                                  backgroundColor: Colors.green,
                                 ),
                               );
                             },
                           ),
                         ),
-                      );
-                    }).toList(),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              SizedBox(height: 30),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Daily Progress",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
 
-              if (isAddOpen) ...[
-                Text(
-                  'Add Custom Intake',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: caloriesController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: "Add Calories",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: proteinController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: "Add Protein",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: nutrientsController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: "Add Nutrients",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    double cal = double.tryParse(caloriesController.text) ?? 0;
-                    double prot = double.tryParse(proteinController.text) ?? 0;
-                    double nut = double.tryParse(nutrientsController.text) ?? 0;
+                    // Show daily goals from profile
+                    Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Your Daily Goals",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              "Calories: ${dailyCalories.toStringAsFixed(0)} kcal",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            Text(
+                              "Protein: ${dailyProtein.toStringAsFixed(0)} g",
+                              style: TextStyle(color: Colors.blue),
+                            ),
+                            Text(
+                              "Nutrients: ${dailyNutrients.toStringAsFixed(0)}%",
+                              style: TextStyle(color: Colors.green),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              "Progress will reset at midnight",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
 
-                    widget.onUpdateProgress(cal: cal, prot: prot, nut: nut);
+                    Text(
+                      "Calories (${widget.consumedCalories.toStringAsFixed(0)}/${dailyCalories.toStringAsFixed(0)} kcal)",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    LinearProgressIndicator(
+                      value: widget.caloriesProgress,
+                      minHeight: 10,
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                    ),
+                    SizedBox(height: 20),
 
-                    caloriesController.clear();
-                    proteinController.clear();
-                    nutrientsController.clear();
-                    setState(() {
-                      isAddOpen = false;
-                    });
-                  },
-                  child: Text("Update"),
+                    Text(
+                      "Protein (${widget.consumedProtein.toStringAsFixed(0)}/${dailyProtein.toStringAsFixed(0)} g)",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    LinearProgressIndicator(
+                      value: widget.proteinProgress,
+                      minHeight: 10,
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                    ),
+                    SizedBox(height: 20),
+
+                    Text(
+                      "Nutrients (${widget.consumedNutrients.toStringAsFixed(0)}/${dailyNutrients.toStringAsFixed(0)}%)",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    LinearProgressIndicator(
+                      value: widget.nutrientsProgress,
+                      minHeight: 10,
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                    ),
+                    SizedBox(height: 30),
+
+                    Text(
+                      'Mostly Consumed Meals',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+
+                    // Step 3: Meal Tiles
+                    Column(
+                      children:
+                          meals.map((meal) {
+                            return Card(
+                              elevation: 2,
+                              margin: EdgeInsets.symmetric(vertical: 4),
+                              child: ListTile(
+                                title: Text(meal.name),
+                                subtitle: Text(
+                                  "Calories: ${meal.calories}, Protein: ${meal.protein}g, Nutrients: ${meal.nutrients}",
+                                ),
+                                trailing: IconButton(
+                                  icon: Icon(
+                                    Icons.add_circle_outline,
+                                    color: Colors.green,
+                                  ),
+                                  onPressed: () {
+                                    widget.onUpdateProgress(
+                                      cal: meal.calories,
+                                      prot: meal.protein,
+                                      nut: meal.nutrients,
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          "Added ${meal.name} to today's intake",
+                                        ),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                    SizedBox(height: 30),
+
+                    if (isAddOpen) ...[
+                      Text(
+                        'Add Custom Intake',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      TextField(
+                        controller: caloriesController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: "Add Calories",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      TextField(
+                        controller: proteinController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: "Add Protein",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      TextField(
+                        controller: nutrientsController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: "Add Nutrients",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () {
+                          double cal =
+                              double.tryParse(caloriesController.text) ?? 0;
+                          double prot =
+                              double.tryParse(proteinController.text) ?? 0;
+                          double nut =
+                              double.tryParse(nutrientsController.text) ?? 0;
+
+                          widget.onUpdateProgress(
+                            cal: cal,
+                            prot: prot,
+                            nut: nut,
+                          );
+
+                          caloriesController.clear();
+                          proteinController.clear();
+                          nutrientsController.clear();
+                          setState(() {
+                            isAddOpen = false;
+                          });
+                        },
+                        child: Text("Update"),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
