@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:my_project/services/firebase_service.dart';
+//import 'package:my_project/model/usermodel.dart';
 import 'package:my_project/components/navbar.dart';
-import 'package:my_project/model/usermodel.dart';
-import  'package:my_project/auth/signup.dart';
-
-
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -13,134 +11,129 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  final UserModel user = UserModel(
-    name: "yogesh",
-    email: "yvbhivasne@gmail.com",
-    password: "123456",
-  );
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _firebaseService = FirebaseService();
+  bool _isLoading = false;
+  String? _errorMessage;
 
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
-  void handle() {
-    String enteredEmail = emailController.text.trim();
-    String enteredPassword = passwordController.text;
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    if (enteredEmail.isEmpty || enteredPassword.isEmpty) {
-      print("Email or password can't be empty");
-    } else if (enteredPassword.length < 4) {
-      print("Password must be at least 4 characters");
-    } else {
-      print("Welcome ${user.name}");
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const Navbar(username: 'Yogesh'),
-        ),
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _firebaseService.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
 
+      final user = await _firebaseService.getUserData(
+        _emailController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Navbar(username: user.name)),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    double formWidth = MediaQuery.of(context).size.width * 0.85; // responsive
-
     return Scaffold(
-      backgroundColor: Colors.blue[100],
-      appBar: AppBar(
-        backgroundColor: Colors.blue[300],
-        title: const Text('Hey there user'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Container(
-          width: formWidth,
-          padding: const EdgeInsets.all(24.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
+      appBar: AppBar(title: const Text('Login')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                "Login",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent,
-                ),
-              ),
-              const SizedBox(height: 25),
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
                   labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
                   labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  border: OutlineInputBorder(),
+                ),
+                obscureText: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
+                  return null;
+                },
+              ),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleLogin,
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator()
+                          : const Text('Login'),
+                ),
               ),
-              const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const Signup()),
-                      );
-                    },
-                    child: const Text(
-                      "Don't have an account? Sign up",
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blueAccent,
-                      ),
-                    ),
-                  ),
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: const Color(0xff4c505b),
-                    child: IconButton(
-                      iconSize: 28, // Increased for better appearance
-                      color: Colors.white,
-                      onPressed: handle,
-                      icon: const Icon(Icons.arrow_forward),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, 'signup');
+                },
+                child: const Text('Don\'t have an account? Sign up'),
               ),
-
-
             ],
           ),
         ),
