@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:my_project/services/food_api_service.dart';
+import 'package:my_project/widgets/food_search.dart';
 
 class Info {
   final String name;
@@ -15,6 +17,16 @@ class Info {
     required this.carbs,
     required this.fats,
   });
+
+  factory Info.fromApiData(String name, Map<String, dynamic> nutritionData) {
+    return Info(
+      name: name,
+      calories: nutritionData['calories'].toDouble(),
+      protein: nutritionData['protein'].toDouble(),
+      carbs: nutritionData['carbohydrates'].toDouble(),
+      fats: nutritionData['fat'].toDouble(),
+    );
+  }
 }
 
 class SearchPage extends StatefulWidget {
@@ -28,7 +40,12 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController searchController = TextEditingController();
   Info? searchedInfo;
   bool hasSearched = false;
+  bool isLoading = false;
 
+  // Create an instance of the FoodApiService
+  final FoodApiService _foodApiService = FoodApiService();
+
+  // Keep the sample food data for suggestions
   final List<Info> foodData = [
     Info(name: "Roti", calories: 100, protein: 3, carbs: 18, fats: 1),
     Info(name: "Rice", calories: 200, protein: 4, carbs: 44, fats: 0.5),
@@ -36,20 +53,46 @@ class _SearchPageState extends State<SearchPage> {
     Info(name: "Dal", calories: 150, protein: 9, carbs: 25, fats: 1),
   ];
 
-  void performSearch(String query) {
+  void performSearch(String query) async {
     if (query.isEmpty) return;
 
     setState(() {
+      isLoading = true;
       hasSearched = true;
-      searchedInfo = foodData.firstWhere(
-            (food) => food.name.toLowerCase() == query.toLowerCase(),
-        orElse: () => Info(name: "Not Found", calories: 0, protein: 0, carbs: 0, fats: 0),
-      );
     });
+
+    try {
+      // Call the API service to search for food
+      final foodData = await _foodApiService.searchFood(query);
+
+      // Extract nutrition information from the API response
+      final nutritionData = _foodApiService.extractNutrition(foodData);
+
+      // Get the food name from the API response
+      final foodName = foodData['foods'][0]['description'] ?? query;
+
+      setState(() {
+        // Create a new Info object from the API data
+        searchedInfo = Info.fromApiData(foodName, nutritionData);
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        searchedInfo = Info(name: "Not Found", calories: 0, protein: 0, carbs: 0, fats: 0);
+        isLoading = false;
+      });
+      print('Error during search: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Add a loading check in the build method
+    if (isLoading && hasSearched) {
+      // If we're loading, show a loading indicator but keep the UI structure
+      searchedInfo = Info(name: "Loading...", calories: 0, protein: 0, carbs: 0, fats: 0);
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -101,7 +144,7 @@ class _SearchPageState extends State<SearchPage> {
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 15),
                   ),
-                  onSubmitted: performSearch,
+                  onSubmitted:performSearch ,
                 ),
               ),
 

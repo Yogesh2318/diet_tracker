@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+//import 'package:intl/intl.dart';
 import 'package:my_project/model/usermodel.dart';
-import 'package:my_project/services/firebase_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:my_project/services/firebase_service.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/food_search.dart';
 
 // Step 1: Create a Meal class

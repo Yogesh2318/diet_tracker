@@ -3,6 +3,7 @@ import 'package:my_project/model/usermodel.dart';
 import 'package:my_project/pages/home.dart';
 import 'package:my_project/pages/profile.dart';
 import 'package:my_project/pages/search.dart';
+import 'package:my_project/pages/camera.dart';
 import 'package:my_project/services/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -261,6 +262,7 @@ class _NavbarState extends State<Navbar> {
       ),
       const SearchPage(),
       ProfilePage(user: userModel, onUpdate: updateUserModel),
+      CameraScreen(),
     ];
 
     return Scaffold(
@@ -276,9 +278,12 @@ class _NavbarState extends State<Navbar> {
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
         items: const [
+          
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.camera), label: 'Camera'),
+          
         ],
       ),
     );

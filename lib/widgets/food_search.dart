@@ -5,8 +5,7 @@ import 'dart:async';
 class FoodSearchWidget extends StatefulWidget {
   final Function(Map<String, dynamic>) onFoodSelected;
 
-  const FoodSearchWidget({Key? key, required this.onFoodSelected})
-    : super(key: key);
+  const FoodSearchWidget({super.key, required this.onFoodSelected});
 
   @override
   _FoodSearchWidgetState createState() => _FoodSearchWidgetState();
