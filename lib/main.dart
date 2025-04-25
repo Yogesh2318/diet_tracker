@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:my_project/auth/login.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_project/auth/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_project/pages/home.dart';
+
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +14,7 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-      ,
+
         messagingSenderId: '946960410048',
         projectId: 'diet-tracker-d67e4',
         storageBucket: 'diet-tracker-d67e4.appspot.com',
@@ -20,7 +24,9 @@ Future<void> main() async {
     print('Error initializing Firebase: $e');
   }
 
-  runApp(const MyApp());
+  runApp(
+      ProviderScope(child: const MyApp()),
+  );
 }
 
 class MyApp extends StatelessWidget {

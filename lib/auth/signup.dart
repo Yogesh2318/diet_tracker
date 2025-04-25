@@ -27,6 +27,7 @@ class _SignupState extends State<Signup> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+    
   }
 
   Future<void> _handleSignup() async {
@@ -100,7 +101,7 @@ class _SignupState extends State<Signup> {
           key: _formKey,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+            children: [              
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -108,6 +109,7 @@ class _SignupState extends State<Signup> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
+                
                 textInputAction: TextInputAction.next,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -143,7 +145,9 @@ class _SignupState extends State<Signup> {
                   labelText: 'Password',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock),
+                  
                 ),
+                
                 obscureText: true,
                 textInputAction: TextInputAction.next,
                 validator: (value) {
@@ -192,6 +196,7 @@ class _SignupState extends State<Signup> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleSignup,
                   style: ElevatedButton.styleFrom(
+                    
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
