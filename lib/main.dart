@@ -14,8 +14,7 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: '',
-        appId: '',
+
         messagingSenderId: '946960410048',
         projectId: 'diet-tracker-d67e4',
         storageBucket: 'diet-tracker-d67e4.appspot.com',
